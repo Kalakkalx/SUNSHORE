@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#10191e">
+    <meta name="description" content="A procedural coastal 3D city prototype.">
+    <title>Sunshore - 3D City Prototype</title>
+    <link rel="stylesheet" href="./style.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="game" class="game" aria-label="Sunshore 3D city prototype">
+      <div id="loading" class="loading-screen">
+        <div class="loading-mark" aria-hidden="true"></div>
+        <p>BUILDING THE CITY</p>
+        <span>Generating streets, buildings, and traffic</span>
+      </div>
+
+      <div class="game-vignette" aria-hidden="true"></div>
+
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-sun" aria-hidden="true"></span>
+          <div>
+            <h1>SUNSHORE</h1>
+            <p>COASTAL CITY / FREE ROAM</p>
+          </div>
+        </div>
+        <div class="world-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="world-status">CITY STREAMING</span>
+        </div>
+        <nav class="quick-actions" aria-label="City actions">
+          <button class="pause-toggle" type="button" data-action="map">MAP</button>
+          <button class="pause-toggle" type="button" data-action="garage">GARAGE</button>
+          <button id="radio-toggle" class="pause-toggle" type="button" data-action="radio">RADIO OFF</button>
+          <button class="pause-toggle" type="button" data-action="horn">HORN</button>
+          <button class="pause-toggle" type="button" data-action="headlights">LIGHTS</button>
+          <button id="pause-toggle" class="pause-toggle" type="button">PAUSE</button>
+        </nav>
+      </header>
+
+      <section id="map-overlay" class="modal-overlay" aria-label="City map" hidden>
+        <div class="modal-card map-card">
+          <div class="modal-heading"><div><span class="control-title">SUNSHORE / NAVIGATION</span><h2>CITY MAP</h2></div><button class="modal-close" type="button" data-action="map">CLOSE</button></div>
+          <canvas id="full-map" width="1120" height="660" aria-label="Whole city map with destinations"></canvas>
+          <div class="map-legend"><span>● YOU</span><span>━ ROAD</span><span>┄ GPS ROUTE</span><strong id="map-destination">SELECT A DESTINATION</strong></div>
+          <div id="landmark-list" class="landmark-list" aria-label="Destinations"></div>
+        </div>
+      </section>
+
+      <section id="garage-overlay" class="modal-overlay" aria-label="Garage" hidden>
+        <div class="modal-card garage-card">
+          <div class="modal-heading"><div><span class="control-title">SUNSHORE / VEHICLE SELECT</span><h2>GARAGE</h2></div><button class="modal-close" type="button" data-action="garage">CLOSE</button></div>
+          <p class="modal-copy">Choose a model to spawn beside you. Walk up to it and press E to drive.</p>
+          <div id="garage-list" class="garage-list"></div>
+          <button id="store-vehicle" class="store-button" type="button">STORE CURRENT VEHICLE</button>
+          <p id="garage-status" class="garage-status">Choose a model below. It will appear beside you.</p>
+        </div>
+      </section>
+
+      <section id="pause-overlay" class="pause-overlay" aria-label="Game paused" hidden>
+        <div class="pause-card">
+          <span class="control-title">SUNSHORE / FREE ROAM</span>
+          <h2>PAUSED</h2>
+          <p>The city is waiting.</p>
+          <button id="resume-button" class="resume-button" type="button">RESUME</button>
+        </div>
+      </section>
+
+      <section class="control-card" aria-label="Movement controls">
+        <div id="mode-title" class="control-title">ON FOOT</div>
+        <p id="mode-description">Move through the city</p>
+        <div class="key-layout" aria-hidden="true">
+          <kbd>W</kbd>
+          <kbd>A</kbd>
+          <kbd>S</kbd>
+          <kbd>D</kbd>
+          <span class="key-or">OR</span>
+          <kbd class="key-wide">ARROWS</kbd>
+        </div>
+        <p class="control-hint">W/Up move / A-D steer / E enter / G garage / M map / H horn / L lights / R radio / Space jump / Esc pause</p>
+      </section>
+
+      <section class="world-readout" aria-label="World activity">
+        <div><span class="readout-label">TRAFFIC</span><strong id="traffic-count">0</strong></div>
+        <div><span class="readout-label">PEOPLE</span><strong id="pedestrian-count">0</strong></div>
+        <div><span class="readout-label">AREA</span><strong id="area-label">DOWNTOWN</strong></div>
+        <div><span class="readout-label">LOCAL TIME</span><strong id="time-label">10:00</strong></div>
+        <div><span class="readout-label">HEALTH</span><strong id="health-value">100%</strong></div>
+      </section>
+
+      <div class="gps-readout"><span id="compass-label">N</span><span id="gps-label">NO GPS DESTINATION</span></div>
+      <section id="driving-hud" class="driving-hud" hidden>
+        <div class="speedometer"><strong id="speed-value">0</strong><span>KM/H</span><b id="gear-label">P</b></div>
+        <div class="condition-label"><span>VEHICLE CONDITION</span><b id="condition-value">100%</b></div>
+        <div class="condition-track"><span id="condition-fill"></span></div>
+      </section>
+
+      <div class="reticle" aria-hidden="true">
+        <span></span>
+      </div>
+
+      <canvas id="mini-map" class="mini-map" width="192" height="192" aria-label="Nearby road map"></canvas>
+
+      <div id="vehicle-prompt" class="vehicle-prompt" hidden></div>
+      <button class="vehicle-action" type="button" data-interact hidden>ENTER</button>
+
+      <section class="touch-pad" aria-label="Touch movement and turning controls">
+        <button type="button" data-direction="nw" aria-label="Move northwest">↖</button>
+        <button type="button" data-direction="n" aria-label="Move north">↑</button>
+        <button type="button" data-direction="ne" aria-label="Move northeast">↗</button>
+        <button type="button" data-direction="w" aria-label="Move west">←</button>
+        <span class="touch-center" aria-hidden="true"></span>
+        <button type="button" data-direction="e" aria-label="Move east">→</button>
+        <button type="button" data-direction="sw" aria-label="Move southwest">↙</button>
+        <button type="button" data-direction="s" aria-label="Move south">↓</button>
+        <button type="button" data-direction="se" aria-label="Move southeast">↘</button>
+      </section>
+
+      <footer class="bottom-note">
+        <span class="live-pip" aria-hidden="true"></span>
+        <span>COASTAL FREE ROAM</span>
+        <span class="note-divider">/</span>
+        <span>TRAFFIC AND PEDESTRIANS ARE SIMULATED</span>
+      </footer>
+    </main>
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>
